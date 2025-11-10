@@ -1,0 +1,5 @@
+{
+  "name": "Diageo Smart Inventory & Supply Chain Optimization",
+  "description": "An intelligent dashboard for Diageo to monitor inventory, forecast demand, and receive AI-powered supply chain optimization suggestions using Google's Gemini API.",
+  "requestFramePermissions": []
+}
