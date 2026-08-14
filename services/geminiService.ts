@@ -1,13 +1,21 @@
 
-import { GoogleGenAI, Type } from "@google/genai";
 import type { Product, ForecastPoint, ReorderSuggestion } from '../types';
 
-if (!process.env.API_KEY) {
-  console.error("API_KEY is not set. Please ensure the API_KEY environment variable is configured.");
-  throw new Error("API_KEY environment variable not set. The application cannot connect to Google Gemini.");
-}
+const AI_OPERATIONS_ENDPOINT = import.meta.env.VITE_AI_OPERATIONS_ENDPOINT;
 
-const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+async function requestAiOperation<T>(operation: string, payload: unknown): Promise<T> {
+  if (!AI_OPERATIONS_ENDPOINT) {
+    throw new Error('La IA no está configurada para este entorno. Primero conecta el endpoint protegido.');
+  }
+
+  const response = await fetch(AI_OPERATIONS_ENDPOINT, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ operation, payload }),
+  });
+  if (!response.ok) throw new Error(`No se pudo completar el análisis (${response.status}).`);
+  return response.json() as Promise<T>;
+}
 
 /**
  * Generates a 6-month demand forecast for a specific product.
@@ -15,36 +23,8 @@ const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
  * @returns A promise that resolves to an array of forecast data points.
  */
 export const getDemandForecast = async (productName: string): Promise<ForecastPoint[]> => {
-  try {
-    const response = await ai.models.generateContent({
-      model: "gemini-2.5-flash", // Using Flash for speed on this focused task.
-      contents: `As a supply chain expert for Diageo, create a pragmatic 6-month sales forecast for "${productName}".
-      The current month is ${new Date().toLocaleString('default', { month: 'long' })}.
-      Factor in typical seasonal demand shifts (e.g., holidays, summer trends) and recent market performance.
-      The output must be a clean JSON array of objects, each with an abbreviated "month" (e.g., 'Jul') and a numerical "forecast".`,
-      config: {
-        responseMimeType: "application/json",
-        responseSchema: {
-          type: Type.ARRAY,
-          items: {
-            type: Type.OBJECT,
-            properties: {
-              month: { type: Type.STRING, description: "Abbreviated month name (e.g., 'Jan', 'Feb')." },
-              forecast: { type: Type.INTEGER, description: "Forecasted sales units for the month." },
-            },
-            required: ["month", "forecast"],
-          },
-        },
-      },
-    });
-
-    const jsonText = response.text.trim();
-    return JSON.parse(jsonText) as ForecastPoint[];
-  } catch (error) {
-    console.error(`Error fetching demand forecast for ${productName}:`, error);
-    // Provide a more user-friendly error message.
-    throw new Error(`Failed to generate demand forecast for ${productName}. The AI service may be unavailable or experiencing issues.`);
-  }
+  const response = await requestAiOperation<{ forecast: ForecastPoint[] }>('inventory_forecast', { productName });
+  return response.forecast;
 };
 
 /**
@@ -58,36 +38,6 @@ export const getReorderSuggestions = async (inventory: Product[]): Promise<Reord
     return [];
   }
 
-  try {
-    const response = await ai.models.generateContent({
-      // Using Pro for its stronger reasoning capabilities needed for optimization tasks.
-      model: "gemini-2.5-pro",
-      contents: `Act as an inventory optimization model for Diageo. For the following low-stock items, calculate the optimal reorder quantity to achieve a 45-day supply buffer, assuming a 14-day replenishment lead time.
-      For each item, provide a concise, data-driven justification for the suggested quantity.
-      Inventory data: ${JSON.stringify(lowStockItems, null, 2)}
-      The response must be a JSON array of objects, each with "sku", "productName", "suggestedQuantity", and "reason".`,
-      config: {
-        responseMimeType: "application/json",
-        responseSchema: {
-          type: Type.ARRAY,
-          items: {
-            type: Type.OBJECT,
-            properties: {
-              sku: { type: Type.STRING },
-              productName: { type: Type.STRING },
-              suggestedQuantity: { type: Type.INTEGER },
-              reason: { type: Type.STRING },
-            },
-            required: ["sku", "productName", "suggestedQuantity", "reason"],
-          },
-        },
-      },
-    });
-    
-    const jsonText = response.text.trim();
-    return JSON.parse(jsonText) as ReorderSuggestion[];
-  } catch (error) {
-    console.error("Error fetching reorder suggestions:", error);
-    throw new Error("Failed to generate reorder suggestions. The AI service may be unavailable or there might be an issue with the provided inventory data.");
-  }
+  const response = await requestAiOperation<{ suggestions: ReorderSuggestion[] }>('inventory_reorder', { inventory: lowStockItems });
+  return response.suggestions;
 };
