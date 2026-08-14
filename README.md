@@ -1,5 +1,7 @@
 
-# Diageo Smart Inventory & Supply Chain Optimization System
+# Smart Inventory & Supply Chain Optimization System
+
+> Antes de habilitar IA, configura `VITE_AI_OPERATIONS_ENDPOINT` con un endpoint protegido. Nunca coloques una clave de proveedor de IA en el navegador. El siguiente sprint reemplaza los pronósticos de demostración por cálculos con historial de ventas, tiempo real de reabasto y políticas de inventario.
 
 This is an intelligent dashboard for Diageo to monitor inventory, forecast demand, and receive AI-powered supply chain optimization suggestions using Google's Gemini API. The interface provides a clear, at-a-glance overview of key inventory metrics and actionable insights to prevent stockouts and optimize stock levels.
 
