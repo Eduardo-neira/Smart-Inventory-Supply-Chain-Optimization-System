@@ -16,8 +16,6 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 22
-          cache: npm
-      # A lockfile is intentionally added in the dependency-hardening follow-up.
-      # This temporary install keeps CI usable while the project has none.
+      # Se restaurará la caché con `npm ci` al versionar package-lock.json.
       - run: npm install
       - run: npm run build
